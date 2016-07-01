@@ -7,6 +7,7 @@ import (
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/config"
 	"github.com/kataras/iris/logger"
+	"github.com/roporter/go-loreley"
 )
 
 type loggerMiddleware struct {
@@ -28,7 +29,7 @@ func (l *loggerMiddleware) Serve(ctx *iris.Context) {
 	ctx.Next()
 	//no time.Since in order to format it well after
 	endTime = time.Now()
-	date = endTime.Format("01/02 - 15:04:05")
+	date = endTime.Format("15:04:05.999999 - 02/01/2006")
 	latency = endTime.Sub(startTime)
 
 	if l.config.Status {
@@ -47,8 +48,18 @@ func (l *loggerMiddleware) Serve(ctx *iris.Context) {
 		path = ""
 	}
 
+	getText, _ := loreley.CompileAndExecuteToString(
+		`{bold}{fg 15}{bg 40} GET {from "" 0}{reset}`,
+		nil,
+		nil,
+	)
+
 	//finally print the logs
-	l.printf("%s %v %4v %s %s %s \n", date, status, latency, ip, method, path)
+	if(method == "GET") {
+		l.printf("%s %s | %v | %4v | %s | %s \n", getText, date, status, latency, ip, path)
+	} else {
+		l.printf("%s %v %4v %s %s %s \n", date, status, latency, ip, method, path)
+	}
 
 }
 
