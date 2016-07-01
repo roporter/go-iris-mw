@@ -3,6 +3,7 @@ package logger
 import (
 	"strconv"
 	"time"
+	"strings"
 
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/config"
@@ -18,8 +19,7 @@ type loggerMiddleware struct {
 // Serve serves the middleware
 func (l *loggerMiddleware) Serve(ctx *iris.Context) {
 	//all except latency to string
-	var date, status, ip, method, path string
-	var latency time.Duration
+	var date, timed, latency, status, ip, method, path string
 	var startTime, endTime time.Time
 	path = ctx.PathString()
 	method = ctx.MethodString()
@@ -29,15 +29,21 @@ func (l *loggerMiddleware) Serve(ctx *iris.Context) {
 	ctx.Next()
 	//no time.Since in order to format it well after
 	endTime = time.Now()
-	date = endTime.Format("15:04:05.999999 - 02/01/2006")
-	latency = endTime.Sub(startTime)
+	timed = rightPad2Len(endTime.Format("15:04:05.999999"), "0", 15)
+	date = endTime.Format("02/01/2006")
+	latency = endTime.Sub(startTime).String()
+	parts := strings.Split(latency,".")
+	if(!strings.Contains(parts[1],"ms")) {
+		parts[1] = leftPad2Len(parts[1],"0",6)
+	}
+	latency = parts[0] + "." + parts[1]
 
 	if l.config.Status {
 		status = strconv.Itoa(ctx.Response.StatusCode())
 	}
 
 	if l.config.IP {
-		ip = ctx.RemoteAddr()
+		ip = leftPad2Len(ctx.RemoteAddr()," ",15)
 	}
 
 	if !l.config.Method {
@@ -56,11 +62,25 @@ func (l *loggerMiddleware) Serve(ctx *iris.Context) {
 
 	//finally print the logs
 	if(method == "GET") {
-		l.printf("%s %s | %v | %4v | %s | %s \n", getText, date, status, latency, ip, path)
+		l.printf("%s %s - %s | %v | %4v | %s | %s \n", getText, timed, date, status, latency, ip, path)
 	} else {
-		l.printf("%s %v %4v %s %s %s \n", date, status, latency, ip, method, path)
+		l.printf("%s - %s %v %4v %s %s %s \n", timed, date, status, latency, ip, method, path)
 	}
 
+}
+
+func rightPad2Len(s string, padStr string, overallLen int) string{
+	var padCountInt int
+	padCountInt = 1 + ((overallLen-len(padStr))/len(padStr))
+	var retStr =  s + strings.Repeat(padStr, padCountInt)
+	return retStr[:overallLen]
+}
+
+func leftPad2Len(s string, padStr string, overallLen int) string{
+	var padCountInt int
+	padCountInt = 1 + ((overallLen-len(padStr))/len(padStr))
+	var retStr = strings.Repeat(padStr, padCountInt) + s
+	return retStr[(len(retStr)-overallLen):]
 }
 
 func (l *loggerMiddleware) printf(format string, a ...interface{}) {
