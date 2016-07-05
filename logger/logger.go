@@ -33,11 +33,13 @@ func (l *loggerMiddleware) Serve(ctx *iris.Context) {
 	date = endTime.Format("02/01/2006")
 	latency = endTime.Sub(startTime).String()
 	parts := strings.Split(latency,".")
-	if(!strings.Contains(parts[1],"ms")) {
-		parts[1] = leftPad2Len(parts[1],"0",6)
+	if(len(parts) == 2) {
+	    	if(!strings.Contains(parts[1],"ms")) {
+			parts[1] = leftPad2Len(parts[1],"0",6)
+		}
+		latency = parts[0] + "." + parts[1]
 	}
-	latency = parts[0] + "." + parts[1]
-
+	
 	if l.config.Status {
 		status = strconv.Itoa(ctx.Response.StatusCode())
 	}
