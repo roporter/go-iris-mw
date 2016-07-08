@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 	"strings"
+	"sync"
 
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/config"
@@ -15,6 +16,8 @@ type loggerMiddleware struct {
 	*logger.Logger
 	config Config
 }
+
+var mapLock       sync.RWMutex
 
 // Serve serves the middleware
 func (l *loggerMiddleware) Serve(ctx *iris.Context) {
@@ -64,9 +67,13 @@ func (l *loggerMiddleware) Serve(ctx *iris.Context) {
 
 	//finally print the logs
 	if(method == "GET") {
+		mapLock.RLock()
 		l.printf("%s %s - %s | %v | %4v | %s | %s \n", getText, timed, date, status, latency, ip, path)
+		mapLock.RUnlock()
 	} else {
+		mapLock.RLock()
 		l.printf("%s - %s %v %4v %s %s %s \n", timed, date, status, latency, ip, method, path)
+		mapLock.RUnlock()
 	}
 
 }
